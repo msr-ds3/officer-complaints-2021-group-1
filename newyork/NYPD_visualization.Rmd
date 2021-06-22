@@ -1,0 +1,54 @@
+---
+title: "NYPD Complaints"
+author: "Matt Vang"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Visualizing complaints filed against NYPD police officers over the years 2007-2017
+
+Data is provided by the [New York Civil Liberties Union](https://github.com/new-york-civil-liberties-union/NYPD-Misconduct-Complaint-Database-Updated) from 2007-2017. We will start by running the bash script to download the data. Next, use the 02_load_newyork_complaints file to clean and load it into the correct format. We can now process the data further for visualization.
+
+## Initial Setup
+
+Setting up necessary libraries and plots theme. Load in our RData saved from the 02 file.
+
+```{r libraries}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+
+theme_set(theme_bw())
+options(repr.plot.width=4, repr.plot.height=3)
+
+### read in new york data
+load('ny_complaints.RData')
+```
+
+## Reshape data to prepare for plotting
+
+We need to extract the number of complaints per officer information from the original dataset.
+
+```{r create new frame, warning=FALSE}
+### number of complaints by officer
+officers_complaints <- ny_complaints %>% filter(ReceivedDate >= "2017-01-01" & ReceivedDate <= "2017-12-31") %>%
+  group_by(OfficerID,FirstName,LastName,CurrentRankLong) %>%
+  summarise(num_complaints = n()) %>% ungroup() %>% mutate(decile = ntile(num_complaints,10))
+```
+
+## Plotting
+
+Replicating the article's graph. The top 10 percent of police officers are responsible for over 30 percent of all complaints.
+
+```{r plot data, warning=FALSE}
+officers_complaints %>%
+  group_by(decile) %>%
+  summarise(total_complaints = sum(num_complaints)) %>%
+  mutate(percent_of_total = total_complaints/sum(total_complaints)) %>%
+  ggplot(aes(x=decile,y=percent_of_total)) + geom_histogram(stat = 'identity') +
+  ylab("Proportion of complaints") + xlab("Decile")
+```
+

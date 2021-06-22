@@ -12,12 +12,15 @@ options(repr.plot.width=4, repr.plot.height=3)
 ### read in new york data
 load('ny_complaints.RData')
 
-### get number of complaints by Officer ID
-officers_complaints <- ny_complaints %>% group_by(OfficerID,FirstName,LastName,CurrentRankLong) %>%
+### number of complaints by officer
+officers_complaints <- ny_complaints %>% filter(ReceivedDate >= "2017-01-01" & ReceivedDate <= "2017-12-31") %>%
+  group_by(OfficerID,FirstName,LastName,CurrentRankLong) %>%
   summarise(num_complaints = n()) %>% ungroup() %>% mutate(decile = ntile(num_complaints,10))
+
 
 officers_complaints %>%
   group_by(decile) %>%
   summarise(total_complaints = sum(num_complaints)) %>%
   mutate(percent_of_total = total_complaints/sum(total_complaints)) %>%
-  ggplot(aes(x=decile,y=percent_of_total)) + geom_histogram(stat = 'identity') 
+  ggplot(aes(x=decile,y=percent_of_total)) + geom_histogram(stat = 'identity') +
+  ylab("Proportion of complaints") + xlab("Decile")
