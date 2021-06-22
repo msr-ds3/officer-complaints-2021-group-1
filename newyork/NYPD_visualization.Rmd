@@ -1,7 +1,8 @@
 ---
 title: "NYPD Complaints"
 author: "Matt Vang"
-output: html_document
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -34,7 +35,7 @@ We need to extract the number of complaints per officer information from the ori
 
 ```{r create new frame, warning=FALSE}
 ### number of complaints by officer
-officers_complaints <- ny_complaints %>% filter(ReceivedDate >= "2017-01-01" & ReceivedDate <= "2017-12-31") %>%
+officers_complaints <- ny_complaints %>% filter(ReceivedDate >= "2007-01-01" & ReceivedDate < "2018-01-01") %>%
   group_by(OfficerID,FirstName,LastName,CurrentRankLong) %>%
   summarise(num_complaints = n()) %>% ungroup() %>% mutate(decile = ntile(num_complaints,10))
 ```

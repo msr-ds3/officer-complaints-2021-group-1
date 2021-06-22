@@ -13,7 +13,8 @@ options(repr.plot.width=4, repr.plot.height=3)
 load('ny_complaints.RData')
 
 ### number of complaints by officer
-officers_complaints <- ny_complaints %>% filter(ReceivedDate >= "2017-01-01" & ReceivedDate <= "2017-12-31") %>%
+officers_complaints <- ny_complaints %>%
+  filter(ReceivedDate >= "2007-01-01" & ReceivedDate < "2018-01-01") %>%
   group_by(OfficerID,FirstName,LastName,CurrentRankLong) %>%
   summarise(num_complaints = n()) %>% ungroup() %>% mutate(decile = ntile(num_complaints,10))
 
