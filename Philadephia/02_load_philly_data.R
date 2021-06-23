@@ -2,7 +2,7 @@ library(tidyverse)
 
 ### Open Philly Data Clean Up
 open_philly_complaints <- read.csv('open_philly_ppd_complaint.csv',header=T) %>%
-  subset(,select=-summary) %>%
+  subset(select=-summary) %>%
   mutate(date_received = as.Date(date_received))
 open_philly_findings <- read.csv('open_philly_ppd_complaint_findings.csv',header=T) %>% na.omit()
 
@@ -24,4 +24,4 @@ sam_philly_complaints_complainants <- read.csv('ppd_complaint_complainants_7-18_
 sam_data <- sam_philly_complaints %>% inner_join(sam_philly_findings,by='complaint_id') %>%
   filter(date_received >= '2015-04-01' & date_received < '2021-04-01')
 
-### Joined by 
+save(sam_data,open_philly_data,file='philly.RData')
