@@ -1,1 +1,17 @@
+library(tidyverse)
 load('chicago.RData')
+
+officers_complaints <- chi_data %>% filter(closed_date != "") %>% select(officer_id,complaint_id,complaint_date)
+
+### total number of distinct allegations made to each officer
+distinct_complaints <- officers_complaints %>% group_by(officer_id) %>%
+  summarise(num_complaints = n()) %>% ungroup() %>%
+  mutate(decile = ntile(num_complaints,10))
+
+### plotting
+distinct_complaints %>%
+  group_by(decile) %>%
+  summarise(total_complaints = sum(num_complaints)) %>%
+  mutate(percent_of_total = total_complaints/sum(total_complaints)) %>%
+  ggplot(aes(x=decile,y=percent_of_total)) + geom_histogram(stat = 'identity') +
+  ylab("Proportion of complaints") + xlab("Decile")
