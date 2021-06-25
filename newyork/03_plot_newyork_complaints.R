@@ -44,6 +44,33 @@ racial_differences %>%
   xlab('Complainant Race') +
   ylab('Number of complaints')
 
+#############################################################
 
+### compare ratio of complaints vs. different & same gender
+gender_differences <- ny_complaints %>%
+  filter(ImpactedGender != "", OfficerGender != "") %>%
+  count(ImpactedGender, OfficerGender)
 
+gender_differences_wm %>%
+  ggplot(aes(x = ImpactedGender, y = n, fill = OfficerGender)) +
+  geom_bar(position = position_dodge(), stat='identity') +
+  scale_y_continuous() +
+  xlab('Complainant Gender') +
+  ylab('Number of complaints')
 
+#############################################################
+
+### compare ratios betw gender & race, with focus on women & men
+
+race_and_gender <- ny_complaints %>% filter(ImpactedGender != "", ImpactedRace != "") %>% count(ImpactedGender, ImpactedRace)
+
+race_and_gender %>%
+  group_by(ImpactedRace, ImpactedGender) %>%
+  filter(ImpactedGender %in% c("Female", "Male")) %>%
+  ggplot(aes(x = ImpactedRace, y = n)) +
+  geom_bar(stat='identity') +
+  facet_wrap(~ ImpactedGender) +
+  xlab('Complainant Race') +
+  ylab('Number of complaints')
+  
+# Can change the colors of the bars if needed
