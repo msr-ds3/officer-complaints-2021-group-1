@@ -1,5 +1,5 @@
 ---
-title: "Final Project On NYPD Complaints"
+title: "Analyzing NYPD Complaints"
 author: "Matt Vang and Xin Yi Li"
 date: "6/24/2021"
 output: html_document
@@ -126,6 +126,7 @@ First, we look at what types of allegations are officers more likely to be in tr
 ny_complaints %>% 
   count(FADOType) %>%
   mutate(percent = n/sum(n)) %>%
+  group_by(FADOType) %>%
   ggplot(aes(x=FADOType,y=percent)) +
   geom_bar(stat='identity') +
   scale_y_continuous(labels = percent_format(accuracy = 1))+
