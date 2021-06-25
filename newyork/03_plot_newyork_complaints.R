@@ -47,7 +47,7 @@ racial_differences %>%
 #############################################################
 
 ### compare ratio of complaints vs. different & same gender
-gender_differences <- ny_complaints %>%
+gender_differences_wm <- ny_complaints %>%
   filter(ImpactedGender != "", OfficerGender != "") %>%
   count(ImpactedGender, OfficerGender)
 

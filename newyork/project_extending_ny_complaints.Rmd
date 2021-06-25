@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ## Overview
 Since the start of the pandemic, we have seen an increase in protests against police brutality accross the United States. Organizations have succeeded in making their complaints data public, which enabled data analysts to investigate the phenomenon of "bad apples" within police departments (see this [article](https://github.com/msr-ds3/coursework/blob/master/week4/ft_police_complaints.pdf) for more). 
-We will extend on this article and the data they used, to discover *a) if there is a racial bias in the NY Police Department* and *b) how the NYPD can reduce the number of complaints*.
+We will extend on this article and the data they used, to discover *a) the difference in treatment of different gender-race*, *b) if there is a racial bias in the NY Police Department* and *c) how the NYPD can reduce the number of complaints*.
 
 ## About The Data
 Data is provided by the [New York Civil Liberties Union](https://github.com/new-york-civil-liberties-union/NYPD-Misconduct-Complaint-Database-Updated) from 2007-2017. To get started, run the bash script in /newyork to download the data. Next, use the 02_load_newyork_complaints file to clean and load it into the correct format. We can now process the data further for analysis.
@@ -37,6 +37,41 @@ ny_complaints <- ny_complaints %>%
   distinct(OfficerID, ComplaintID, .keep_all = TRUE)
 ```
 
+## Difference In Treatment of Gender/Race
+
+```{r gender-race, fig.align='center'}
+
+### compare ratio of complaints vs. different & same gender
+gender_differences_wm <- ny_complaints %>%
+  filter(ImpactedGender != "", OfficerGender != "") %>%
+  count(ImpactedGender, OfficerGender)
+
+gender_differences_wm %>%
+  ggplot(aes(x = ImpactedGender, y = n, fill = OfficerGender)) +
+  geom_bar(position = position_dodge(), stat='identity') +
+  scale_y_continuous() +
+  xlab('Complainant Gender') +
+  ylab('Number of complaints') +
+  labs(fill='Officer\'s Gender', title='Gender Difference In Complainants and Officers')
+
+#############################################################
+
+### compare ratios betw gender & race, with focus on women & men
+
+race_and_gender <- ny_complaints %>% filter(ImpactedGender != "", ImpactedRace != "") %>% count(ImpactedGender, ImpactedRace)
+
+race_and_gender %>%
+  group_by(ImpactedRace, ImpactedGender) %>%
+  filter(ImpactedGender %in% c("Female", "Male")) %>%
+  ggplot(aes(x = ImpactedRace, y = n)) +
+  geom_bar(stat='identity') +
+  facet_wrap(~ ImpactedGender) +
+  xlab('Complainant Race') +
+  ylab('Number of complaints') +
+  labs(title='Cross Gender-Race Difference In Complainants and Officers')
+```
+
+There seems to be a huge gap between genders with sufficient data (Male and Female), where male complainants are more likely to be mishandled by male police officers. This could be because of an imbalance in the number of male police officers vs female.
 
 ## Investigating a racial bias phenomenon
 In order to do this, we want to look at how the number of complaints differ across the impacted racial categories.
