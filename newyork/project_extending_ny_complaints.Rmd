@@ -17,7 +17,8 @@ Data is provided by the [New York Civil Liberties Union](https://github.com/new-
 
 ## Initial Setup
 
-The necessary libraries we will need are *tidyverse*, *ggplot2* (included in the previous), and *scales*. Other libraries useful for further analysis and modeling can be *lubridate* and *modelr*. To load in the data, use the loading file located in the /newyork folder and then call *load('ny_complaints.RData')*.
+The necessary libraries we will need are *tidyverse*, *ggplot2* (included in the previous), and *scales*. Other libraries useful for further analysis and modeling can be *lubridate* and *modelr*. To load in the data, use the loading file located in the /newyork folder and then call *load('ny_complaints.RData')*. We will also filter the data to only accounts from start of 2007 to end of March 2021. All different allegations within a complaint to a single officer will be collapsed to a single allegation.
+
 
 ```{r settingup, include=FALSE}
 # set up libraries and options
