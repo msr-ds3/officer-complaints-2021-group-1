@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ## Overview
 Since the start of the pandemic, we have seen an increase in protests against police brutality accross the United States. Organizations have succeeded in making their complaints data public, which enabled data analysts to investigate the phenomenon of "bad apples" within police departments (see this [article](https://github.com/msr-ds3/coursework/blob/master/week4/ft_police_complaints.pdf) for more). 
-We will extend on this article and the data they used, to discover *a) the difference in treatment of different gender-race*, *b) if there is a racial bias in the NY Police Department* and *c) how the NYPD can reduce the number of complaints*.
+We will extend on this article and the data they used, to discover *a) the difference in treatment of different gender-race*, *b) if there is a racial bias in the NY Police Department*, *c) how the NYPD can reduce the number of complaints*, and lastly *d) an attempt to create a model out of the data*.
 
 ## About The Data
 Data is provided by the [New York Civil Liberties Union](https://github.com/new-york-civil-liberties-union/NYPD-Misconduct-Complaint-Database-Updated) from 2007-2017. To get started, run the bash script in /newyork to download the data. Next, use the 02_load_newyork_complaints file to clean and load it into the correct format. We can now process the data further for analysis.
@@ -36,6 +36,38 @@ load('ny_complaints.RData')
 ny_complaints <- ny_complaints %>%
   filter(ReceivedDate >= "2007-01-01" & ReceivedDate <= "2021-04-01") %>%
   distinct(OfficerID, ComplaintID, .keep_all = TRUE)
+```
+
+## Finding the bad apples
+
+### Reshape data to prepare for plotting
+
+We need to extract the number of complaints per officer information from the original dataset.
+
+```{r create new frame, warning=FALSE}
+### allegations made to each officer (collapsed multiple allegations in one incident into only ONE allegation)
+officers_complaints <- ny_complaints %>%
+  filter(ReceivedDate >= "2007-01-01" & ReceivedDate < "2018-01-01") %>%
+  group_by(OfficerID,ComplaintID,FirstName,LastName,CurrentRankLong) %>%
+  summarise() %>% ungroup()
+
+### total number of distinct allegations made to each officer
+distinct_complaints <- officers_complaints %>% group_by(OfficerID) %>%
+  summarise(num_complaints = n()) %>% ungroup() %>%
+  mutate(decile = ntile(num_complaints,10))
+```
+
+### Plotting
+
+Replicating the article's graph. The top 10 percent of police officers are responsible for over 30 percent of all complaints.
+
+```{r plot data, warning=FALSE}
+distinct_complaints %>%
+  group_by(decile) %>%
+  summarise(total_complaints = sum(num_complaints)) %>%
+  mutate(percent_of_total = total_complaints/sum(total_complaints)) %>%
+  ggplot(aes(x=decile,y=percent_of_total)) + geom_histogram(stat = 'identity') +
+  ylab("Proportion of complaints") + xlab("Decile")
 ```
 
 ## Difference In Treatment of Gender/Race
@@ -179,4 +211,92 @@ days_of_complaints %>% filter(days_to_close <= 700) %>%
   labs(title='Amount of Time to Close A Complaint')
 ```
 
-Data shows that it takes an incredibly long time for the complaints to be investigated and closed. Most ranging from 2 months to 8 months, while the majority sits around 3 months. A lot of the complaints have to wait for over a year to be closed. This systems needs much improvement as we need to hold officers accountable as soon as possible if they did violate the law against civilians. 
+Data shows that it takes an incredibly long time for the complaints to be investigated and closed. Most ranging from 2 months to 8 months, while the majority sits around 3 months. A lot of the complaints have to wait for over a year to be closed. This systems needs much improvement as we need to hold officers accountable as soon as possible if they did violate the law against civilians.
+
+## An Attempt to Predict The Number Of Accumulated Complaints Over Time (based on officer's identity and their first incident)
+ 
+We will try to fit a model using multivariate multiple linear regression. The variables are: the officer's race and gender, their number of days on the job (experience),their first incident precint, and their first complaint allegation type. 
+
+```{r modeling}
+officers_first_incidents <- ny_complaints %>% 
+  select(OfficerID,OfficerGender,OfficerRace,DaysOnForce,FADOType,IncidentPrecinct) %>%
+  filter(DaysOnForce>0 & IncidentPrecinct != "") %>%
+  group_by(OfficerID) %>%
+  mutate(first_incident_FADO = first(FADOType), first_precint = first(IncidentPrecinct)) %>%
+  ungroup() %>%
+  group_by(OfficerID,OfficerGender,OfficerRace,DaysOnForce,first_incident_FADO,first_precint) %>%
+  summarise(count=n()) %>% ungroup() %>%
+  group_by(OfficerID) %>%
+  mutate(accumulated_offenses = cumsum(count))
+  
+### Setting up training,testing, and validating sets
+frac_train = 0.8
+frac_test = 0.1
+
+set.seed(2734)
+
+num_observations <- nrow(officers_first_incidents)
+frac_train <- 0.8
+num_train <- floor(num_observations * frac_train)
+
+# randomly sample rows for the training set 
+train <- sample(1:num_observations, num_train, replace=F)
+
+# training set used to fit the model
+train_repeating_complaints <- officers_first_incidents[train, ]
+
+# validate and test sets used to evaluate the fit
+test_validate_set <- officers_first_incidents[-train, ]
+num_test_validate <- floor((num_observations - num_train)/2)
+validate <- sample(nrow(test_validate_set),num_test_validate,replace = F)
+
+# validate and test
+validate_repeating_complaints <- test_validate_set[validate,]
+test_repeating_complaints <- test_validate_set[-validate,]
+
+# training model
+K <- 1:8
+train_err <- c()
+validate_err <- c()
+for (k in K) {
+  
+  # fit on the training data
+  model <- lm(accumulated_offenses ~ OfficerGender + OfficerRace +
+         poly(DaysOnForce,k,raw=T) +
+         first_precint +
+         first_incident_FADO, data=train_repeating_complaints)
+  
+  # evaluate on the training data
+  train_err[k] <- sqrt(mean((predict(model, train_repeating_complaints) - train_repeating_complaints$accumulated_offenses)^2))
+  
+  # evaluate on the validate data
+  validate_err[k] <- sqrt(mean((predict(model, validate_repeating_complaints) - validate_repeating_complaints$accumulated_offenses)^2))
+}
+
+## Look at effects of polynomial degree
+plot_data <- data.frame(K, train_err, validate_err) %>%
+  gather("split", "error", -K)
+
+ggplot(plot_data, aes(x=K, y=error, color=split)) +
+  geom_line() +
+  scale_x_continuous(breaks=K) +
+  xlab('Polynomial Degree') +
+  ylab('RMSE')
+
+train_err
+validate_err
+
+## Final model to predict 
+final_model <- lm(accumulated_offenses ~ OfficerGender + OfficerRace +
+              poly(DaysOnForce,6,raw=T) +
+              first_precint +
+              first_incident_FADO, data=train_repeating_complaints)
+
+## Testing error rate of about 2.53 number of accumulated complaints
+test_err <- sqrt(mean((predict(model, test_repeating_complaints) - test_repeating_complaints$accumulated_offenses)^2))
+test_err
+
+```
+
+The results are: 2.50 for training error, 2.47 for validating error, and about 2.53 for testing error (these numbers are the mean squared error of our predictions compared to actual values).
+
